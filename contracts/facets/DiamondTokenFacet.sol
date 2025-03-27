@@ -58,9 +58,9 @@ contract DiamondTokenFacet is IERC20 {
         return true;
     }
 
-    function mint(address to, uint256 amount) external {
+    function mint(address to, uint256 amount) external virtual { // Added 'virtual' here
         require(to != address(0), "Cannot mint to zero address");
-        
+
         _balances[to] += amount;
         _totalSupply += amount;
         emit Transfer(address(0), to, amount);
@@ -69,7 +69,7 @@ contract DiamondTokenFacet is IERC20 {
     function _transfer(address sender, address recipient, uint256 amount) internal {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
-        
+
         uint256 senderBalance = _balances[sender];
         require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
         unchecked {

@@ -11,28 +11,33 @@ contract ERC1155Facet {
     event Staked(address indexed user, address indexed token, uint256 indexed tokenId, uint256 amount);
     event Unstaked(address indexed user, address indexed token, uint256 indexed tokenId, uint256 amount);
 
-   
-function stakeERC1155(address token, uint256 tokenId, uint256 amount) external {
-    LibAppStorage.AppStorage storage s = LibAppStorage.diamondStorage();
-    require(amount > 0, "Cannot stake zero tokens");
+    address public stakingContractAddress;
 
-    // Only claim rewards if user has previously staked
-    if (s.stakedERC1155[msg.sender][tokenId] > 0) {
-StakingContractFacet(address(this)).claimRewards();
+    function setStakingContractAddress(address stakingContract) external {
+        stakingContractAddress = stakingContract;
     }
 
-    IERC1155(token).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
-    s.stakedERC1155[msg.sender][tokenId] += amount;
+    function stakeERC1155(address token, uint256 tokenId, uint256 amount) external {
+        LibAppStorage.AppStorage storage s = LibAppStorage.diamondStorage();
+        require(amount > 0, "Cannot stake zero tokens");
 
-    emit Staked(msg.sender, token, tokenId, amount);
-}
+        // Only claim rewards if user has previously staked
+        if (s.stakedERC1155[msg.sender][tokenId] > 0) {
+            StakingContractFacet(stakingContractAddress).claimRewards();
+        }
+
+        IERC1155(token).safeTransferFrom(msg.sender, address(this), tokenId, amount, "");
+        s.stakedERC1155[msg.sender][tokenId] += amount;
+
+        emit Staked(msg.sender, token, tokenId, amount);
+    }
 
     function unstakeERC1155(address token, uint256 tokenId, uint256 amount) external {
         LibAppStorage.AppStorage storage s = LibAppStorage.diamondStorage();
         require(s.stakedERC1155[msg.sender][tokenId] >= amount, "Not enough tokens staked");
 
         // Claim rewards before unstaking
-        StakingContractFacet(address(this)).claimRewards();
+        StakingContractFacet(stakingContractAddress).claimRewards();
 
         s.stakedERC1155[msg.sender][tokenId] -= amount;
         IERC1155(token).safeTransferFrom(address(this), msg.sender, tokenId, amount, "");

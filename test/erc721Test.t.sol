@@ -54,15 +54,22 @@ contract MockERC721 is IERC721 {
 
 
 
+contract MockStakingContractFacet is StakingContractFacet {
+    function claimRewards() public override {}
+}
+
 contract ERC721FacetTest is Test {
     ERC721Facet private erc721;
     MockERC721 private nft;
     address private user1 = address(0x2);
     uint256 private tokenId = 1;
+    MockStakingContractFacet public stakingFacet; // Add this line
 
     function setUp() public {
         erc721 = new ERC721Facet();
         nft = new MockERC721();
+        stakingFacet = new MockStakingContractFacet(); // Add this line
+        erc721.setStakingContractAddress(address(stakingFacet)); // Add this line
         nft.mint(user1, tokenId);
     }
 
