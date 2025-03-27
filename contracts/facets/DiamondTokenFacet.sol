@@ -5,11 +5,12 @@ import "../libraries/LibAppStorage.sol";
 import "../interfaces/IERC20.sol";
 
 contract DiamondTokenFacet is IERC20 {
-    using LibAppStorage for LibAppStorage.AppStorage;
+    // Get a reference to the diamond storage
+    function getStorage() internal pure returns (LibAppStorage.AppStorage storage) {
+        return LibAppStorage.diamondStorage();
+    }
 
-    mapping(address => uint256) private _balances;
-    mapping(address => mapping(address => uint256)) private _allowances;
-    uint256 private _totalSupply;
+    // Token metadata - kept as constants
     string private constant _name = "DiamondStake Token";
     string private constant _symbol = "DST";
     uint8 private constant _decimals = 18;
@@ -27,11 +28,13 @@ contract DiamondTokenFacet is IERC20 {
     }
 
     function totalSupply() public view override returns (uint256) {
-        return _totalSupply;
+        // Use the dedicated tokenTotalSupply field for total supply
+        return getStorage().tokenTotalSupply;
     }
 
     function balanceOf(address account) public view override returns (uint256) {
-        return _balances[account];
+        // Use the dedicated tokenBalances mapping for token balances
+        return getStorage().tokenBalances[account];
     }
 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
@@ -40,7 +43,8 @@ contract DiamondTokenFacet is IERC20 {
     }
 
     function allowance(address owner, address spender) public view override returns (uint256) {
-        return _allowances[owner][spender];
+        // Use the tokenAllowances mapping from AppStorage
+        return getStorage().tokenAllowances[owner][spender];
     }
 
     function approve(address spender, uint256 amount) public override returns (bool) {
@@ -50,19 +54,27 @@ contract DiamondTokenFacet is IERC20 {
 
     function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
         _transfer(sender, recipient, amount);
-        uint256 currentAllowance = _allowances[sender][msg.sender];
+        
+        // Update allowance
+        LibAppStorage.AppStorage storage ds = getStorage();
+        uint256 currentAllowance = ds.tokenAllowances[sender][msg.sender];
         require(currentAllowance >= amount, "ERC20: transfer amount exceeds allowance");
+        
         unchecked {
             _approve(sender, msg.sender, currentAllowance - amount);
         }
+        
         return true;
     }
 
-    function mint(address to, uint256 amount) external virtual { // Added 'virtual' here
+    function mint(address to, uint256 amount) external virtual {
         require(to != address(0), "Cannot mint to zero address");
 
-        _balances[to] += amount;
-        _totalSupply += amount;
+        // Update the AppStorage instead of local storage
+        LibAppStorage.AppStorage storage ds = getStorage();
+        ds.tokenBalances[to] += amount;  // Update token balances
+        ds.tokenTotalSupply += amount;   // Update the total supply
+        
         emit Transfer(address(0), to, amount);
     }
 
@@ -70,21 +82,27 @@ contract DiamondTokenFacet is IERC20 {
         require(sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
-        uint256 senderBalance = _balances[sender];
+        // Get the AppStorage
+        LibAppStorage.AppStorage storage ds = getStorage();
+        
+        uint256 senderBalance = ds.tokenBalances[sender];
         require(senderBalance >= amount, "ERC20: transfer amount exceeds balance");
-        unchecked {
-            _balances[sender] = senderBalance - amount;
-            _balances[recipient] += amount;
-        }
+        
+        // Update balances in AppStorage
+        ds.tokenBalances[sender] = senderBalance - amount;
+        ds.tokenBalances[recipient] += amount;
 
         emit Transfer(sender, recipient, amount);
     }
-
+    
     function _approve(address owner, address spender, uint256 amount) internal {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
 
-        _allowances[owner][spender] = amount;
+        // Update allowances in AppStorage
+        LibAppStorage.AppStorage storage ds = getStorage();
+        ds.tokenAllowances[owner][spender] = amount;
+        
         emit Approval(owner, spender, amount);
     }
 }
