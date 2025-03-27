@@ -22,6 +22,11 @@ library LibAppStorage {
         // Staking token details
         address rewardToken;
         uint256 stakingStartTime;
+        
+        // ERC20 Token functionality
+        mapping(address => mapping(address => uint256)) tokenAllowances; // owner => spender => amount
+        uint256 tokenTotalSupply;   // Total supply of the ERC20 token
+        mapping(address => uint256) tokenBalances;  // ERC20 token balances
     }
 
     function diamondStorage() internal pure returns (AppStorage storage ds) {
